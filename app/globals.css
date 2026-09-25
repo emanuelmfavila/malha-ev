@@ -1,0 +1,38 @@
+/* Fichas de design do simulador. Só tokens, reset e o corpo da página:
+   tudo que é de componente mora em src/estilos/painel.module.css. */
+:root{
+  --fundo:#0d141d;
+  --fundo-mapa:#080d14;
+  --painel:#131c27;
+  --painel-claro:#18232f;
+  --linha:#243040;
+  --linha-suave:#1c2634;
+  --texto:#dde7f1;
+  --texto-medio:#8698ac;
+  --texto-fraco:#5b6b7e;
+
+  --gelo:#5cc4e8;    /* carro em rota */
+  --ambar:#f0a848;   /* fila e recarga */
+  --ameixa:#cc6ba2;  /* falha */
+  --menta:#6ed7a5;   /* viagem concluída */
+  --violeta:#9d8bf7; /* busca do Dijkstra */
+
+  --raio-p:4px; --raio-m:8px;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--fundo);color:var(--texto);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  font-size:13px;line-height:1.5;font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+@media (max-width:1180px){ body{overflow:auto} }
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2a3849;border-radius:9px}
+::-webkit-scrollbar-thumb:hover{background:#374962}
+::-webkit-scrollbar-track{background:transparent}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

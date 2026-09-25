@@ -1,0 +1,29 @@
+{
+  "name": "malha-ev",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulador de carros elétricos sobre grafo, com Dijkstra e A*",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ensaio": "esbuild ensaios/ensaio.ts --bundle --platform=node --outfile=ensaios/.ensaio.cjs --log-level=warning && node ensaios/.ensaio.cjs",
+    "ensaio:regiao": "esbuild ensaios/regiao.ts --bundle --platform=node --outfile=ensaios/.regiao.cjs --log-level=warning && node ensaios/.regiao.cjs"
+  },
+  "dependencies": {
+    "next": "15.5.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zustand": "5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  }
+}
