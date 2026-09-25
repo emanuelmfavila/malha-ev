@@ -74,6 +74,11 @@ O seletor **Cenário** no painel esquerdo troca a malha inteira:
   população de cada cidade, 70% delas com 80 a 100% de bateria. Os tempos de
   estrada são aproximados e devem ser conferidos antes de virar texto.
 
+O bloco **Configurações** do painel ajusta, para qualquer cenário e sem
+reiniciar, a bateria cheia (autonomia), as vagas por posto e o tempo de recarga.
+Na região o mapa segue as posições reais (latitude e longitude na mesma escala,
+com barra de km) e os nós levam o nome completo da cidade.
+
 Um cenário é um objeto em `src/nucleo/cenarios.ts` (como montar a malha, como
 são os postos, quanto vale a unidade); registrar outro ali é o bastante para ele
 aparecer no seletor.
@@ -82,8 +87,9 @@ aparecer no seletor.
 
 `ensaios/ensaio.ts` (malha 7) e `ensaios/regiao.ts` (região) rodam o núcleo sem
 interface, com várias sementes por cenário, e gravam CSV em `ensaios/resultados/`.
-Os dois ensaios de cada script são a posição de um posto único em cada nó e a
-saturação com demanda crescente. Foi o ensaio da região que revelou o carro
+Os ensaios são a posição de um posto único em cada nó, a saturação com demanda
+crescente e, na região, um posto em toda cidade com vagas crescentes
+(`--ensaios=3 --vagas=1,2,4 --demandas3=100,200 --bateria=100`). Foi o ensaio da região que revelou o carro
 quicando entre postos e motivou a cadeia de postos viáveis no planejador.
 
 ## Arquitetura
