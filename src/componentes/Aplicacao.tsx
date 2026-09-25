@@ -7,6 +7,7 @@ import { BarraSuperior } from './BarraSuperior';
 import { PainelEsquerdo } from './PainelEsquerdo';
 import { PainelDireito } from './PainelDireito';
 import { Palco } from './Palco';
+import { Regras } from './Regras';
 import estilos from '@/estilos/painel.module.css';
 
 export function Aplicacao() {
@@ -42,6 +43,7 @@ export function Aplicacao() {
       <PainelEsquerdo />
       <Palco />
       <PainelDireito />
+      <Regras />
     </div>
   );
 }

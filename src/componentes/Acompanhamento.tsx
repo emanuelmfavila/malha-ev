@@ -118,20 +118,20 @@ function NarrativaDoCarro({ carro }: { carro: Carro }) {
   if (carro.situacao === 'em rota' && carro.arestaAtual) {
     const de = Malha.nos[carro.caminho[carro.indiceNoCaminho]].nome;
     const para = Malha.nos[carro.caminho[carro.indiceNoCaminho + 1]].nome;
+    const consumo = Simulacao.configuracao.consumoPorHora;
     const falta = carro.arestaAtual.peso - carro.progressoNaAresta;
     const restante =
       Planejador.pesoDoCaminho(carro.caminho.slice(carro.indiceNoCaminho)) - carro.progressoNaAresta;
     corpo = (
       <>
         <p>
-          Está na aresta <b>{de} → {para}</b>, de peso <b>{carro.arestaAtual.peso}</b>. Já andou{' '}
-          <b>{formatar(carro.progressoNaAresta, 1)}</b> dela, faltam <b>{duracao(falta, 1)}</b> para
-          chegar em {para}.
+          Está na aresta <b>{de} → {para}</b>, de <b>{duracao(carro.arestaAtual.peso)}</b>. Já andou{' '}
+          <b>{duracao(carro.progressoNaAresta)}</b> dela, faltam <b>{duracao(falta)}</b> para chegar em {para}.
         </p>
         <div className={estilos.conta}>
-          falta neste plano&nbsp; <b>{formatar(restante, 1)}</b>
+          falta neste plano&nbsp; <b>{duracao(restante)}</b> = {formatar(restante * consumo, 1)} de bateria
           <br />
-          sobra ao chegar&nbsp;&nbsp; <b>{formatar(carro.bateria - restante, 1)}</b>
+          sobra ao chegar&nbsp;&nbsp; <b>{formatar(carro.bateria - restante * consumo, 1)}</b>
         </div>
         {carro.noDeRecargaPlanejado !== null ? (
           <p>
@@ -157,7 +157,7 @@ function NarrativaDoCarro({ carro }: { carro: Carro }) {
             : `vaga está ${posto?.vagasOcupadas[0] ? 'ocupada' : 'livre'}`}.
         </p>
         <p>
-          Já esperou <b>{duracao(Simulacao.hora - carro.horaDeEntradaNaFila, 1)}</b>.
+          Já esperou <b>{duracao(Simulacao.hora - carro.horaDeEntradaNaFila)}</b>.
         </p>
       </>
     );
@@ -169,7 +169,7 @@ function NarrativaDoCarro({ carro }: { carro: Carro }) {
       <>
         <p>
           Recarregando em <b>{Malha.nos[carro.noAtual].nome}</b>, faltam{' '}
-          <b>{duracao(Math.max(vaga?.horasRestantes ?? 0, 0), 1)}</b> para a bateria voltar aos{' '}
+          <b>{duracao(Math.max(vaga?.horasRestantes ?? 0, 0))}</b> para a bateria voltar aos{' '}
           <b>{Simulacao.configuracao.bateriaCheia}</b>.
         </p>
         <p>
@@ -182,9 +182,10 @@ function NarrativaDoCarro({ carro }: { carro: Carro }) {
       <>
         <p>
           Chegou em <b>{Malha.nos[carro.noAtual].nome}</b> em{' '}
-          <b>{duracao(carro.horaDeChegada! - carro.horaDePartida)}</b>, percorrendo peso{' '}
-          <b>{formatar(carro.pesoPercorrido - carro.inicioDaViagem.pesoPercorrido, 0)}</b> nesta viagem,
-          com <b>{duracao(carro.horasEmFila - carro.inicioDaViagem.horasEmFila)}</b> de fila.
+          <b>{duracao(carro.horaDeChegada! - carro.horaDePartida)}</b>, com{' '}
+          <b>{duracao(carro.pesoPercorrido - carro.inicioDaViagem.pesoPercorrido)}</b> de estrada e{' '}
+          <b>{formatar(carro.bateriaGasta - carro.inicioDaViagem.bateriaGasta, 0)}</b> de bateria gastos,
+          e <b>{duracao(carro.horasEmFila - carro.inicioDaViagem.horasEmFila)}</b> de fila.
         </p>
         <p>
           Está <b>parado</b> ali, e continua na malha. Escolha um destino novo e ele sai de{' '}

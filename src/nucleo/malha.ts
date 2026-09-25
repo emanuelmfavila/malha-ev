@@ -136,12 +136,12 @@ export const Malha = {
   },
 
   /** Muda o peso de uma aresta à mão. Devolve o valor que realmente ficou,
-      já arredondado e dentro da faixa. Como o peso é o tempo e é a bateria,
-      mexer aqui muda as três coisas de uma vez. */
+      arredondado ao minuto e dentro da faixa. Como o peso é o tempo de viagem
+      e a bateria cai por hora, mexer aqui muda as duas coisas de uma vez. */
   definirPeso(indiceDaAresta: number, peso: number): number {
     const aresta = this.arestas[indiceDaAresta];
     if (!aresta) return 0;
-    aresta.peso = limitar(Math.round(peso), PESO_MINIMO, PESO_MAXIMO);
+    aresta.peso = limitar(Math.round(peso * 60) / 60, PESO_MINIMO, PESO_MAXIMO);
     this.atualizarRazaoDePeso();
     return aresta.peso;
   },

@@ -1,10 +1,10 @@
 /* Tipos compartilhados por todo o núcleo.
 
-   REGRA ÚNICA DO MODELO
-     Uma aresta de peso P custa exatamente P horas de relógio e P pontos de
-     bateria. Não existe velocidade, relevo nem consumo por carro: todo carro é
-     igual, com bateria de 100 pontos. É o que faz o custo de um caminho ser a
-     soma dos números desenhados nele. */
+   REGRA DO MODELO
+     O peso de uma aresta é o tempo de viagem em horas. A bateria cai a uma taxa
+     fixa de pontos por hora (consumoPorHora), então uma aresta de peso P custa P
+     horas de relógio e P × consumo pontos de bateria. Não existe velocidade nem
+     relevo: todo carro é igual. Com consumo 1, peso = horas = bateria. */
 
 export interface VagaOcupada {
   numeroDoCarro: number;
@@ -133,8 +133,10 @@ export interface Algoritmo {
 export interface Configuracao {
   algoritmo: string;
   criterio: string;
-  /** Capacidade da bateria em pontos de peso: quanto de estrada cabe numa carga. */
+  /** Capacidade da bateria, em pontos. */
   bateriaCheia: number;
+  /** Pontos de bateria gastos por hora de viagem. Autonomia = bateriaCheia / consumoPorHora. */
+  consumoPorHora: number;
   reserva: number;
   /** Passou num posto com a bateria neste nível ou abaixo, para e recarrega,
       mesmo que a parada não estivesse no plano. Zero desliga a regra. */
@@ -149,11 +151,15 @@ export type TipoDeExplicacao = 'direto' | 'desvio' | 'arriscado' | 'sem rota';
 
 export interface Explicacao {
   tipo: TipoDeExplicacao;
+  /** Bateria que o caminho direto gasta, em pontos. */
   precisa?: number;
+  /** Tempo do caminho direto, em horas. */
+  horas?: number;
   disponivel?: number;
   reserva?: number;
   bateria?: number;
   trechos?: number;
+  /** Horas até o posto escolhido. */
   pesoAteOPosto?: number;
   esperaEstimada?: number;
   postosAoAlcance?: number;

@@ -2,13 +2,10 @@
    Juiz de Fora). Dados puros, sem React e sem DOM: a interface e os ensaios em
    lote montam a mesma malha a partir daqui.
 
-   O modelo do simulador tem uma unidade só: peso da aresta = "horas" de relógio
-   = pontos de bateria, com bateria cheia de 100. Para ler isso como um carro
-   elétrico de verdade, cada unidade vale 2,5 minutos reais:
-     bateria cheia  = 100 unidades = 250 min ≈ 4 h 10 de estrada ≈ 330 km a 80 km/h
-     recarga rápida = 20 unidades  = 50 min (carregador DC até encher)
-     reserva de 10  = 25 min ≈ 33 km guardados
-     dia real       = 576 unidades
+   O peso de cada rodovia é o tempo de viagem em horas. A bateria cai 24 pontos
+   por hora, então a bateria cheia de 100 pontos dá 4 h 10 de estrada, cerca de
+   330 km a 80 km/h, a autonomia de um elétrico comum em rodovia. A recarga
+   rápida (DC, até encher) leva 50 min. Reserva de 10 pontos = 25 min de estrada.
 
    Os tempos de estrada são aproximações de viagem em condições normais e devem
    ser conferidos antes de publicar; trocar a região é trocar as duas tabelas. */
@@ -16,12 +13,13 @@
 import { Malha } from './malha';
 import type { No } from './tipos';
 
-export const MINUTOS_POR_UNIDADE = 2.5;
+/** Pontos de bateria por hora de estrada: 100 pontos = 4 h 10 de autonomia. */
+export const CONSUMO_NA_REGIAO = 24;
 export const RECARGA_RAPIDA_MIN = 50;
+export const RECARGA_RAPIDA_H = RECARGA_RAPIDA_MIN / 60;
 export const VAGAS_NA_REGIAO = 4;
-export const UNIDADES_POR_DIA_REAL = (24 * 60) / MINUTOS_POR_UNIDADE; // 576
 
-export const unidades = (minutos: number): number => Math.max(1, Math.round(minutos / MINUTOS_POR_UNIDADE));
+export const horas = (minutos: number): number => minutos / 60;
 
 export interface Cidade {
   sigla: string;
@@ -110,7 +108,7 @@ export function montarRegiaoSudeste(): void {
   Malha.adjacencia = Malha.nos.map(() => []);
   for (const [de, para, minutos] of ESTRADAS) {
     const aresta = Malha.conectar(indicePorSigla.get(de)!, indicePorSigla.get(para)!);
-    Malha.definirPeso(aresta.indice, unidades(minutos));
+    Malha.definirPeso(aresta.indice, horas(minutos));
   }
 }
 

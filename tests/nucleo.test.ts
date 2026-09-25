@@ -376,8 +376,9 @@ describe('peso da aresta editado à mão', () => {
   });
 
   it('arredonda o valor e o mantém dentro da faixa', () => {
-    expect(Malha.definirPeso(0, 7.4)).toBe(7);
-    expect(Malha.definirPeso(0, 7.6)).toBe(8);
+    expect(Malha.definirPeso(0, 7.4)).toBeCloseTo(7.4, 9); // guarda com precisão de minuto
+    expect(Malha.definirPeso(0, 7.6)).toBeCloseTo(7.6, 9);
+    expect(Malha.definirPeso(0, 1.004)).toBeCloseTo(1, 9); // 1 h 00,24 min arredonda para 1 h
     expect(Malha.definirPeso(0, -3)).toBe(PESO_MINIMO);
     expect(Malha.definirPeso(0, 5000)).toBe(PESO_MAXIMO);
   });

@@ -53,10 +53,15 @@ interface Loja {
   rotasExtras: number;
   semente: number;
   quantidadeDePostos: number;
-  /** Capacidade da bateria, vagas e tempo de recarga: começam nos padrões do cenário. */
+  /** Bateria, consumo, vagas e tempo de recarga: começam nos padrões do cenário. */
   bateriaCheia: number;
+  consumoPorHora: number;
   vagasPorPosto: number;
   horasDeRecarga: number;
+  /** Quanto a espera prevista na fila pesa na escolha do posto. */
+  pesoDaFila: number;
+  /** O painel de regras (engrenagem) está aberto. */
+  regrasAbertas: boolean;
   horasPorSegundo: number;
   chegadasAutomaticas: boolean;
   chegadasPorDia: number;
@@ -83,6 +88,7 @@ interface Loja {
   reiniciar: () => void;
   gerarMalha: () => void;
   escolherCenario: (id: string) => void;
+  abrirRegras: (aberto: boolean) => void;
   sortearSemente: () => void;
   aplicarPostos: (silencioso?: boolean) => void;
   definirCampo: <C extends keyof Loja>(campo: C, valor: Loja[C]) => void;
@@ -110,9 +116,12 @@ export const usarLoja = create<Loja>((definir, ler) => ({
   rotasExtras: 6,
   semente: 7,
   quantidadeDePostos: 4,
-  bateriaCheia: Simulacao.configuracao.bateriaCheia,
+  bateriaCheia: Cenarios.porId.aleatoria.bateriaCheia,
+  consumoPorHora: Cenarios.porId.aleatoria.consumoPorHora,
   vagasPorPosto: Cenarios.porId.aleatoria.postos.vagas,
   horasDeRecarga: Cenarios.porId.aleatoria.postos.horasDeRecarga,
+  pesoDaFila: Simulacao.configuracao.pesoDaFila,
+  regrasAbertas: false,
   horasPorSegundo: 4,
   chegadasAutomaticas: false,
   chegadasPorDia: 12,
@@ -169,6 +178,7 @@ export const usarLoja = create<Loja>((definir, ler) => ({
     );
     Simulacao.sortearViagem = cenario.sortearViagem;
     Simulacao.configuracao.bateriaCheia = estado.bateriaCheia;
+    Simulacao.configuracao.consumoPorHora = estado.consumoPorHora;
     vista.kmPorUnidadeDeMundo = cenario.kmPorUnidadeDeMundo;
     Simulacao.reiniciar();
 
@@ -190,11 +200,9 @@ export const usarLoja = create<Loja>((definir, ler) => ({
     const pesos = Malha.arestas.map((a) => a.peso);
     estado.registrarOcorrencia(
       `${cenario.aleatoria ? 'Malha gerada' : cenario.nome}: ${Malha.nos.length} nós, ${Malha.arestas.length} arestas, ` +
-        `pesos de ${Math.min(...pesos)} a ${Math.max(...pesos)}` +
-        (cenario.minutosPorUnidade
-          ? ` (${formatarDuracao(Math.min(...pesos), cenario.minutosPorUnidade)} a ` +
-            `${formatarDuracao(Math.max(...pesos), cenario.minutosPorUnidade)} de estrada).`
-          : '.')
+        `pesos de ${formatarDuracao(Math.min(...pesos))} a ${formatarDuracao(Math.max(...pesos))}, ` +
+        `bateria de ${estado.bateriaCheia} a ${estado.consumoPorHora} por hora ` +
+        `(${formatarDuracao(estado.bateriaCheia / estado.consumoPorHora)} de autonomia).`
     );
     estado.bater();
   },
@@ -208,9 +216,16 @@ export const usarLoja = create<Loja>((definir, ler) => ({
       quantidadeDePostos: cenario.postos.quantidadePadrao,
       vagasPorPosto: cenario.postos.vagas,
       horasDeRecarga: cenario.postos.horasDeRecarga,
+      bateriaCheia: cenario.bateriaCheia,
+      consumoPorHora: cenario.consumoPorHora,
+      bateriaInicial: cenario.bateriaCheia,
     });
     ler().gerarMalha();
     vista.camera.enquadrar();
+  },
+
+  abrirRegras(aberto) {
+    definir({ regrasAbertas: aberto });
   },
 
   sortearSemente() {
@@ -219,15 +234,14 @@ export const usarLoja = create<Loja>((definir, ler) => ({
   },
 
   aplicarPostos(silencioso = false) {
-    const { cenario: id, quantidadeDePostos, vagasPorPosto, horasDeRecarga } = ler();
-    const cenario = Cenarios.porId[id];
+    const { quantidadeDePostos, vagasPorPosto, horasDeRecarga } = ler();
     Malha.configurarPostos(quantidadeDePostos, vagasPorPosto, horasDeRecarga);
     Simulacao.reconciliarComPostos();
     if (!silencioso)
       ler().registrarOcorrencia(
         `${Malha.nosComPosto().length} postos ativos, ${vagasPorPosto} ` +
           `${vagasPorPosto === 1 ? 'vaga' : 'vagas'} cada, recarga de ` +
-          `${formatarDuracao(horasDeRecarga, cenario.minutosPorUnidade)}.`
+          `${formatarDuracao(horasDeRecarga)}.`
       );
     ler().bater();
   },
@@ -243,6 +257,9 @@ export const usarLoja = create<Loja>((definir, ler) => ({
       Simulacao.configuracao.bateriaCheia = valor as number;
       if (ler().bateriaInicial > (valor as number)) definir({ bateriaInicial: valor as number });
     }
+    if (campo === 'consumoPorHora') Simulacao.configuracao.consumoPorHora = valor as number;
+    if (campo === 'pesoDaFila') Simulacao.configuracao.pesoDaFila = valor as number;
+    if (campo === 'quantidadeDePostos') ler().aplicarPostos(true);
     /* Vagas e tempo de recarga valem para os postos que já existem: reconfigura
        na hora, e quem estava na fila ou na vaga é replanejado. */
     if (campo === 'vagasPorPosto' || campo === 'horasDeRecarga') ler().aplicarPostos(true);
@@ -446,9 +463,8 @@ export const usarLoja = create<Loja>((definir, ler) => ({
 
   exportarDados() {
     const dados = {
-      modelo: { regra: 'peso da aresta = horas de viagem = pontos de bateria' },
       cenario: ler().cenario,
-      minutosPorUnidade: Cenarios.porId[ler().cenario].minutosPorUnidade,
+      modelo: { regra: 'peso da aresta = horas de viagem; bateria gasta = horas × consumo por hora' },
       configuracao: {
         ...Simulacao.configuracao,
         nos: Malha.nos.length,
@@ -498,10 +514,8 @@ export const usarLoja = create<Loja>((definir, ler) => ({
   },
 }));
 
-/** Escala do cenário atual, para os painéis mostrarem durações em tempo real. */
-export const cenarioAtual = () => Cenarios.porId[usarLoja.getState().cenario];
-export const duracao = (unidades: number, casas = 0) =>
-  formatarDuracao(unidades, cenarioAtual().minutosPorUnidade, casas);
+/** Duração em horas escrita para gente: "55 min", "2 h 10". */
+export const duracao = (horas: number) => formatarDuracao(horas);
 
 export const CORES_DO_DIARIO: Record<string, string> = {
   partida: CORES.gelo,

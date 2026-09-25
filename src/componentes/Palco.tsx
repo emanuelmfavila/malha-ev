@@ -21,13 +21,15 @@ interface Balao {
   linhas: [string, string][];
 }
 
-/* Editor do peso da aresta. Como o peso é ao mesmo tempo o tempo de viagem e o
-   gasto de bateria, mudar este número muda as duas coisas de uma vez, e é o que
-   a legenda embaixo lembra. */
+/* Editor do peso da aresta. O peso é o tempo de viagem em horas; como a bateria
+   cai por hora, mudar este número muda o tempo e o gasto de uma vez, e é o que a
+   legenda embaixo lembra. Na região o campo é em minutos, de 5 em 5. */
 const EditorDePeso = forwardRef<
   HTMLDivElement,
   { aresta: Aresta; cenario: Cenario; aoMudar: (peso: number) => void; aoFechar: () => void }
 >(function EditorDePeso({ aresta, cenario, aoMudar, aoFechar }, ref) {
+  const emMinutos = !cenario.aleatoria;
+  const passo = emMinutos ? 5 / 60 : 1;
   return (
     <div ref={ref} className={estilos.editorDeAresta}>
       <div className={estilos.tituloDoEditor}>
@@ -39,35 +41,37 @@ const EditorDePeso = forwardRef<
       <div className={estilos.controleDoPeso}>
         <button
           type="button"
-          onClick={() => aoMudar(aresta.peso - 1)}
+          onClick={() => aoMudar(aresta.peso - passo)}
           disabled={aresta.peso <= PESO_MINIMO}
         >
           −
         </button>
         <input
           type="number"
-          min={PESO_MINIMO}
-          max={PESO_MAXIMO}
-          value={aresta.peso}
-          onChange={(evento) => aoMudar(Number(evento.target.value))}
+          min={emMinutos ? PESO_MINIMO * 60 : PESO_MINIMO}
+          max={emMinutos ? PESO_MAXIMO * 60 : PESO_MAXIMO}
+          step={emMinutos ? 5 : 1}
+          value={emMinutos ? Math.round(aresta.peso * 60) : aresta.peso}
+          onChange={(evento) => aoMudar(emMinutos ? Number(evento.target.value) / 60 : Number(evento.target.value))}
         />
+        <span className={estilos.unidadeDoEditor}>{emMinutos ? 'min' : 'h'}</span>
         <button
           type="button"
-          onClick={() => aoMudar(aresta.peso + 1)}
+          onClick={() => aoMudar(aresta.peso + passo)}
           disabled={aresta.peso >= PESO_MAXIMO}
         >
           +
         </button>
       </div>
       <div className={estilos.notaDoEditor}>
-        {formatarDuracao(aresta.peso, cenario.minutosPorUnidade)} de viagem e {aresta.peso} de bateria
+        {formatarDuracao(aresta.peso)} de viagem e {formatar(aresta.peso * Simulacao.configuracao.consumoPorHora, 0)} de bateria
       </div>
     </div>
   );
 });
 
 function descreverAlvo(alvo: Exclude<Alvo, null>, cenario: Cenario): { titulo: string; linhas: [string, string][] } {
-  const escala = cenario.minutosPorUnidade;
+  const consumo = Simulacao.configuracao.consumoPorHora;
   if (alvo.tipo === 'carro') {
     const carro = alvo.carro;
     return {
@@ -86,13 +90,13 @@ function descreverAlvo(alvo: Exclude<Alvo, null>, cenario: Cenario): { titulo: s
   if (alvo.tipo === 'aresta') {
     const { aresta } = alvo;
     return {
-      titulo: escala
-        ? `${cenario.nomeCompleto(Malha.nos[aresta.de])} – ${cenario.nomeCompleto(Malha.nos[aresta.para])}`
-        : `Aresta ${Malha.nos[aresta.de].nome} – ${Malha.nos[aresta.para].nome}`,
+      titulo: cenario.aleatoria
+        ? `Aresta ${Malha.nos[aresta.de].nome} – ${Malha.nos[aresta.para].nome}`
+        : `${cenario.nomeCompleto(Malha.nos[aresta.de])} – ${cenario.nomeCompleto(Malha.nos[aresta.para])}`,
       linhas: [
-        ['peso', String(aresta.peso)],
-        ['tempo de viagem', formatarDuracao(aresta.peso, escala)],
-        ['gasto de bateria', String(aresta.peso)],
+        ['peso (horas)', formatar(aresta.peso, aresta.peso % 1 ? 2 : 0)],
+        ['tempo de viagem', formatarDuracao(aresta.peso)],
+        ['gasto de bateria', `${formatar(aresta.peso * consumo, 0)} (${formatar(consumo, consumo % 1 ? 1 : 0)}/h)`],
         ['clique', 'para mudar o peso'],
       ],
     };
@@ -101,7 +105,7 @@ function descreverAlvo(alvo: Exclude<Alvo, null>, cenario: Cenario): { titulo: s
   const no = alvo.no;
   const linhas: [string, string][] = [
     ['arestas', String(Malha.adjacencia[no.indice].length)],
-    ['pesos', Malha.adjacencia[no.indice].map((l) => l.aresta.peso).join(' ')],
+    ['tempos', Malha.adjacencia[no.indice].map((l) => formatarDuracao(l.aresta.peso)).join(', ')],
   ];
   if (no.posto) {
     const ocupadas = no.posto.vagasOcupadas.filter(Boolean).length;
@@ -312,7 +316,7 @@ export function Palco() {
         <br />
         Roda do mouse aproxima, arrastar move.
         <br />
-        <b>Espaço</b> inicia ou pausa, <b>N</b> avança {cenario.minutosPorUnidade ? '1 unidade' : '1 h'}, <b>C</b> compara, <b>F</b> enquadra.
+        <b>Espaço</b> inicia ou pausa, <b>N</b> avança 1 h, <b>C</b> compara, <b>F</b> enquadra.
       </div>
 
       {arestaSelecionada !== null && Malha.arestas[arestaSelecionada] ? (

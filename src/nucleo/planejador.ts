@@ -17,8 +17,8 @@ export const Planejador = {
     return resultado;
   },
 
-  /** Soma dos pesos do caminho. É ao mesmo tempo o tempo de viagem em horas e o
-      gasto de bateria em pontos, porque o modelo tem um número só. */
+  /** Soma dos pesos do caminho: o tempo de viagem em horas. Vezes o consumo por
+      hora, é o gasto de bateria em pontos. */
   pesoDoCaminho(caminho: number[]): number {
     let total = 0;
     for (let passo = 0; passo < caminho.length - 1; passo++)
@@ -36,7 +36,7 @@ export const Planejador = {
   custoRestanteDosPostos(destino: number, configuracao: Configuracao): Map<number, number> {
     const postos = Malha.nosComPosto();
     const assinatura =
-      configuracao.criterio + '|' + configuracao.reserva + '|' + configuracao.bateriaCheia + '|' +
+      configuracao.criterio + '|' + configuracao.reserva + '|' + configuracao.bateriaCheia + '|' + configuracao.consumoPorHora + '|' +
       postos.map((no) => no.indice).join(',') + '|' +
       Malha.arestas.map((a) => a.peso).join(',');
     if (!memoriaDeRestante || memoriaDeRestante.assinatura !== assinatura)
@@ -47,7 +47,8 @@ export const Planejador = {
     const criterio = CriteriosDeCusto.porId[configuracao.criterio];
     const buscar = (de: number, para: number) =>
       AlgoritmosDeBusca.porId.dijkstra.buscar(de, para, criterio)?.custo;
-    const alcance = configuracao.bateriaCheia - configuracao.reserva;
+    // quantas horas de estrada cabem numa carga cheia, descontada a reserva
+    const alcance = (configuracao.bateriaCheia - configuracao.reserva) / configuracao.consumoPorHora;
     const restante = new Map<number, number>();
     for (const no of postos) {
       const direto = buscar(no.indice, destino);
@@ -82,13 +83,15 @@ export const Planejador = {
      recarga parcial ou preferência por postos vazios. */
   planejarProximoTrecho(carro: Carro, configuracao: Configuracao): Plano {
     const reserva = configuracao.reserva;
-    const disponivel = carro.bateria - reserva;
+    const consumo = configuracao.consumoPorHora;
+    const disponivel = carro.bateria - reserva; // pontos de bateria utilizáveis
 
     const rotaDireta = this.calcularCaminho(carro.noAtual, carro.noDestinoFinal, configuracao);
     if (!rotaDireta) return { viavel: false, motivo: 'rota', explicacao: { tipo: 'sem rota' } };
 
-    const pesoDireto = this.pesoDoCaminho(rotaDireta.caminho);
-    if (pesoDireto <= disponivel)
+    const pesoDireto = this.pesoDoCaminho(rotaDireta.caminho); // horas
+    const precisaDireto = pesoDireto * consumo; // pontos de bateria
+    if (precisaDireto <= disponivel + 1e-9)
       return {
         viavel: true,
         caminho: rotaDireta.caminho,
@@ -96,7 +99,8 @@ export const Planejador = {
         traco: rotaDireta.ordemDeExpansao,
         explicacao: {
           tipo: 'direto',
-          precisa: pesoDireto,
+          precisa: precisaDireto,
+          horas: pesoDireto,
           disponivel,
           reserva,
           bateria: carro.bateria,
@@ -124,7 +128,7 @@ export const Planejador = {
       const ateOPosto = this.calcularCaminho(carro.noAtual, noComPosto.indice, configuracao);
       if (!ateOPosto) continue;
       const pesoAteOPosto = this.pesoDoCaminho(ateOPosto.caminho);
-      if (pesoAteOPosto > disponivel) continue;
+      if (pesoAteOPosto * consumo > disponivel + 1e-9) continue;
       postosAoAlcance++;
 
       const posto = noComPosto.posto!;
@@ -154,7 +158,8 @@ export const Planejador = {
         traco: rotaDireta.ordemDeExpansao,
         explicacao: {
           tipo: 'arriscado',
-          precisa: pesoDireto,
+          precisa: precisaDireto,
+          horas: pesoDireto,
           disponivel,
           reserva,
           bateria: carro.bateria,
@@ -169,7 +174,8 @@ export const Planejador = {
       traco: melhorOpcao.traco,
       explicacao: {
         tipo: 'desvio',
-        precisa: pesoDireto,
+        precisa: precisaDireto,
+        horas: pesoDireto,
         disponivel,
         reserva,
         bateria: carro.bateria,

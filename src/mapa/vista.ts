@@ -1,7 +1,7 @@
 import { Malha } from '@/nucleo/malha';
 import { Simulacao } from '@/nucleo/simulacao';
 import type { Aresta, Carro, No } from '@/nucleo/tipos';
-import { formatar, limitar } from '@/nucleo/utilidades';
+import { formatar, limitar, rotuloDePeso } from '@/nucleo/utilidades';
 import { Camera } from './camera';
 import { CORES, corDaBateria, corDaSituacao } from './cores';
 
@@ -294,7 +294,7 @@ export class VistaDoMapa {
         contexto.fill();
         contexto.stroke();
         contexto.fillStyle = emFoco ? CORES.gelo : '#93a6bb';
-        contexto.fillText(String(aresta.peso), meioX, meioY + 0.5);
+        contexto.fillText(rotuloDePeso(aresta.peso), meioX, meioY + 0.5);
         contexto.textBaseline = 'alphabetic';
       }
     }

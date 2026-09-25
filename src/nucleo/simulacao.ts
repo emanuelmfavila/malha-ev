@@ -1,6 +1,7 @@
 import { aleatorio, inteiroEntre } from './aleatorio';
 import {
   BATERIA_CHEIA,
+  CONSUMO_POR_HORA,
   INTERVALO_DE_AMOSTRA_H,
   MAXIMO_DE_AMOSTRAS,
   MAXIMO_DE_ENTRADAS_NO_DIARIO,
@@ -9,7 +10,7 @@ import { Estatisticas } from './estatisticas';
 import { Malha } from './malha';
 import { Planejador } from './planejador';
 import type { Carro, Configuracao, No, Plano, RetratoDaViagem, TipoDeEntrada } from './tipos';
-import { criarEmissorDeEventos, formatar, limitar } from './utilidades';
+import { criarEmissorDeEventos, formatar, formatarDuracao, limitar } from './utilidades';
 
 export interface EventosDaSimulacao extends Record<string, unknown> {
   reiniciada: undefined;
@@ -52,6 +53,7 @@ export const Simulacao = {
     algoritmo: 'estrela',
     criterio: 'peso',
     bateriaCheia: BATERIA_CHEIA,
+    consumoPorHora: CONSUMO_POR_HORA,
     reserva: 10,          // pontos de bateria guardados como margem
     limiarDeRecarga: 30,  // passou num posto abaixo disso, para e enche
     pesoDaFila: 0.35,   // quanto a espera prevista pesa na escolha do posto
@@ -308,13 +310,15 @@ export const Simulacao = {
     carro.situacao = 'em rota';
 
     const detalhe = plano.explicacao;
+    const consumo = this.configuracao.consumoPorHora;
     if (detalhe.tipo === 'direto') {
       this.anotar(
         carro,
         'rota',
         `Caminho até <b>${Malha.nos[carro.noDestinoFinal].nome}</b> por ${detalhe.trechos} ` +
-          `${detalhe.trechos === 1 ? 'aresta' : 'arestas'} custa <b>${formatar(detalhe.precisa!, 0)}</b>. ` +
-          `Tem <b>${formatar(detalhe.bateria!, 0)}</b> de bateria, menos <b>${formatar(detalhe.reserva!, 0)}</b> ` +
+          `${detalhe.trechos === 1 ? 'aresta' : 'arestas'} leva <b>${formatarDuracao(detalhe.horas!)}</b> e gasta ` +
+          `<b>${formatar(detalhe.precisa!, 0)}</b> de bateria (${formatar(consumo, consumo % 1 ? 1 : 0)} por hora). ` +
+          `Tem <b>${formatar(detalhe.bateria!, 0)}</b>, menos <b>${formatar(detalhe.reserva!, 0)}</b> ` +
           `de reserva sobram <b>${formatar(detalhe.disponivel!, 0)}</b>. Cabe, então segue direto.`
       );
     } else if (detalhe.tipo === 'arriscado') {
@@ -322,20 +326,21 @@ export const Simulacao = {
       this.anotar(
         carro,
         'desvio',
-        `O caminho até <b>${Malha.nos[carro.noDestinoFinal].nome}</b> custa ` +
-          `<b>${formatar(detalhe.precisa!, 0)}</b> e só há <b>${formatar(detalhe.disponivel!, 0)}</b> ` +
-          `de bateria utilizável, e nenhum posto ao alcance leva ao destino. <b>Sai assim mesmo</b> e deve parar ` +
+        `O caminho até <b>${Malha.nos[carro.noDestinoFinal].nome}</b> leva <b>${formatarDuracao(detalhe.horas!)}</b> ` +
+          `e gasta <b>${formatar(detalhe.precisa!, 0)}</b> de bateria, mas só há <b>${formatar(detalhe.disponivel!, 0)}</b> ` +
+          `utilizáveis, e nenhum posto ao alcance leva ao destino. <b>Sai assim mesmo</b> e deve parar ` +
           `na estrada antes de chegar.`
       );
     } else if (detalhe.tipo === 'desvio') {
       this.anotar(
         carro,
         'desvio',
-        `O caminho direto custa <b>${formatar(detalhe.precisa!, 0)}</b> e só há ` +
-          `<b>${formatar(detalhe.disponivel!, 0)}</b> utilizáveis. Entre ${detalhe.postosAoAlcance} ` +
+        `O caminho direto leva <b>${formatarDuracao(detalhe.horas!)}</b> e gasta <b>${formatar(detalhe.precisa!, 0)}</b> ` +
+          `de bateria, mas só há <b>${formatar(detalhe.disponivel!, 0)}</b> utilizáveis. Entre ${detalhe.postosAoAlcance} ` +
           `${detalhe.postosAoAlcance === 1 ? 'posto ao alcance' : 'postos ao alcance'} escolhe ` +
-          `<b>${Malha.nos[detalhe.posto!].nome}</b>, a <b>${formatar(detalhe.pesoAteOPosto!, 0)}</b> de distância, ` +
-          `com espera prevista de <b>${formatar(detalhe.esperaEstimada!, 0)} h</b>.`
+          `<b>${Malha.nos[detalhe.posto!].nome}</b>, a <b>${formatarDuracao(detalhe.pesoAteOPosto!)}</b> ` +
+          `(<b>${formatar(detalhe.pesoAteOPosto! * consumo, 0)}</b> de bateria), ` +
+          `com espera prevista de <b>${formatarDuracao(detalhe.esperaEstimada!)}</b>.`
       );
     }
     this.eventos.emitir('rotaPlanejada', { carro, plano });
@@ -363,8 +368,8 @@ export const Simulacao = {
       carro,
       'chegada',
       `Chega em <b>${Malha.nos[carro.noDestinoFinal].nome}</b> depois de ` +
-        `<b>${formatar(nestaViagem.tempo, 0)} h</b>, tendo percorrido ` +
-        `peso <b>${formatar(nestaViagem.peso, 0)}</b> nesta viagem.`
+        `<b>${formatarDuracao(nestaViagem.tempo)}</b>, com <b>${formatarDuracao(nestaViagem.peso)}</b> de estrada ` +
+        `e <b>${formatar(nestaViagem.bateria, 0)}</b> de bateria gastos nesta viagem.`
     );
     Estatisticas.viagensConcluidas++;
     Estatisticas.somaTempoDeViagem += nestaViagem.tempo;
@@ -391,8 +396,8 @@ export const Simulacao = {
     this.eventos.emitir('carroFalhou', carro);
   },
 
-  /* Uma hora de relógio move o carro uma unidade de peso e gasta um ponto de
-     bateria. É a regra inteira do movimento.
+  /* Uma hora de relógio move o carro uma hora de peso e gasta consumoPorHora
+     pontos de bateria. É a regra inteira do movimento.
 
      O laço existe para que a hora nunca se perca ao cruzar um nó: sobrou tempo
      depois de terminar uma aresta, o resto já entra na aresta seguinte. Sem
@@ -411,9 +416,10 @@ export const Simulacao = {
 
       const avanco = Math.min(restante, aresta.peso - carro.progressoNaAresta);
       carro.progressoNaAresta += avanco;
+      const gasto = avanco * this.configuracao.consumoPorHora;
       carro.pesoPercorrido += avanco;
-      carro.bateriaGasta += avanco;
-      carro.bateria -= avanco;
+      carro.bateriaGasta += gasto;
+      carro.bateria -= gasto;
       restante -= avanco;
 
       if (carro.bateria <= 1e-9) {
@@ -541,8 +547,8 @@ export const Simulacao = {
       this.anotar(
         carro,
         'recarga',
-        `Entra na vaga de <b>${no.nome}</b> depois de <b>${formatar(esperou, 0)} h</b> de fila. ` +
-          `A recarga leva <b>${posto.horasDeRecarga} h</b>.`
+        `Entra na vaga de <b>${no.nome}</b> depois de <b>${formatarDuracao(esperou)}</b> de fila. ` +
+          `A recarga leva <b>${formatarDuracao(posto.horasDeRecarga)}</b>.`
       );
     }
 

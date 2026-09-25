@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Malha } from '@/nucleo/malha';
 import { Simulacao } from '@/nucleo/simulacao';
 import { Estatisticas } from '@/nucleo/estatisticas';
@@ -8,12 +8,13 @@ import { Cenarios } from '@/nucleo/cenarios';
 import { BATERIA_CHEIA } from '@/nucleo/constantes';
 import {
   CIDADES,
+  CONSUMO_NA_REGIAO,
   ESTRADAS,
   KM_POR_UNIDADE_DE_MUNDO,
+  RECARGA_RAPIDA_H,
   indicePorSigla,
   montarRegiaoSudeste,
   sortearViagemNaRegiao,
-  unidades,
 } from '@/nucleo/regiaoSudeste';
 import { criarGeradorAleatorio } from '@/nucleo/aleatorio';
 
@@ -27,11 +28,11 @@ describe('cenário de região: corredor Sudeste', () => {
     Malha.nos.forEach((no) => (no.posto = null));
   });
 
-  it('monta uma cidade por nó e uma aresta por rodovia, com peso em unidades de 2,5 min', () => {
+  it('monta uma cidade por nó e uma aresta por rodovia, com peso em horas de viagem', () => {
     expect(Malha.nos).toHaveLength(CIDADES.length);
     expect(Malha.arestas).toHaveLength(ESTRADAS.length);
     for (const [de, para, minutos] of ESTRADAS)
-      expect(Malha.arestaEntre(indicePorSigla.get(de)!, indicePorSigla.get(para)!)!.peso).toBe(unidades(minutos));
+      expect(Malha.arestaEntre(indicePorSigla.get(de)!, indicePorSigla.get(para)!)!.peso).toBeCloseTo(minutos / 60, 9);
   });
 
   it('deixa toda cidade alcançável a partir de qualquer outra', () => {
@@ -49,28 +50,33 @@ describe('cenário de região: corredor Sudeste', () => {
         expect(estrela.buscar(a, b, peso)!.custo).toBe(dijkstra.buscar(a, b, peso)!.custo);
   });
 
-  it('São Paulo–Rio não cabe numa carga: exige recarga no caminho', () => {
-    const custo = dijkstra.buscar(indicePorSigla.get('SP')!, indicePorSigla.get('RIO')!, peso)!.custo;
-    expect(custo).toBeGreaterThan(BATERIA_CHEIA);
+  it('São Paulo–Rio leva mais de 6 h e não cabe numa carga de 4 h 10', () => {
+    const horas = dijkstra.buscar(indicePorSigla.get('SP')!, indicePorSigla.get('RIO')!, peso)!.custo;
+    expect(horas).toBeGreaterThan(6);
+    expect(horas * CONSUMO_NA_REGIAO).toBeGreaterThan(BATERIA_CHEIA);
   });
 
   it('com bateria configurada para 200 pontos, São Paulo–Rio vai direto', () => {
-    Malha.configurarPostos(Malha.nos.length, 4, unidades(50));
-    Object.assign(Simulacao.configuracao, { bateriaCheia: 200, reserva: 10, limiarDeRecarga: 0, chegadasAutomaticas: false });
+    Malha.configurarPostos(Malha.nos.length, 4, RECARGA_RAPIDA_H);
+    Object.assign(Simulacao.configuracao, {
+      bateriaCheia: 200, consumoPorHora: CONSUMO_NA_REGIAO, reserva: 10, limiarDeRecarga: 0, chegadasAutomaticas: false,
+    });
     Simulacao.reiniciar();
     const carro = Simulacao.colocarCarro(indicePorSigla.get('SP')!, indicePorSigla.get('RIO')!, 200)!;
     expect(carro.bateria).toBe(200);
-    for (let k = 0; k < 800; k++) Simulacao.avancar(0.5);
+    for (let k = 0; k < 400; k++) Simulacao.avancar(0.05);
     expect(carro.situacao).toBe('chegou');
     expect(carro.recargasFeitas).toBe(0);
-    Simulacao.configuracao.bateriaCheia = BATERIA_CHEIA;
+    expect(carro.bateriaGasta).toBeCloseTo(carro.pesoPercorrido * CONSUMO_NA_REGIAO, 6);
+    Object.assign(Simulacao.configuracao, { bateriaCheia: BATERIA_CHEIA, consumoPorHora: 1 });
   });
 
   it('registra o cenário com 4 vagas e recarga de 50 min', () => {
     const cenario = Cenarios.porId.sudeste;
     expect(cenario.postos.vagas).toBe(4);
-    expect(cenario.postos.horasDeRecarga).toBe(unidades(50));
-    expect(cenario.minutosPorUnidade).toBe(2.5);
+    expect(cenario.postos.horasDeRecarga).toBeCloseTo(50 / 60, 9);
+    expect(cenario.consumoPorHora).toBe(24);
+    expect(cenario.bateriaCheia / cenario.consumoPorHora).toBeCloseTo(4.1667, 3); // 4 h 10 de autonomia
     expect(cenario.nomeCompleto(Malha.nos[indicePorSigla.get('CAM')!])).toBe('Campinas');
     expect(Malha.nos[indicePorSigla.get('SP')!].nome).toBe('São Paulo');
   });
@@ -102,33 +108,36 @@ describe('planejador com cadeia de postos', () => {
   beforeEach(() => {
     montarRegiaoSudeste();
     Object.assign(Simulacao.configuracao, {
-      algoritmo: 'estrela', criterio: 'peso', reserva: 10, limiarDeRecarga: 30, pesoDaFila: 0.35,
-      chegadasAutomaticas: false,
+      algoritmo: 'estrela', criterio: 'peso', bateriaCheia: BATERIA_CHEIA, consumoPorHora: CONSUMO_NA_REGIAO,
+      reserva: 10, limiarDeRecarga: 30, pesoDaFila: 0.35, chegadasAutomaticas: false,
     });
   });
+  afterEach(() => {
+    Simulacao.configuracao.consumoPorHora = 1;
+  });
 
-  const rodar = (unidadesDeTempo: number) => {
-    for (let k = 0; k < unidadesDeTempo / 0.5; k++) Simulacao.avancar(0.5);
+  const rodar = (horas: number) => {
+    for (let k = 0; k < horas / 0.05; k++) Simulacao.avancar(0.05);
   };
 
   /* O caso que revelou o defeito: com postos só no lado paulista, de nenhum deles
      dá para chegar ao Rio. O carro deve sair declarando a pane, não quicar entre
      Campinas e São Paulo recarregando para sempre. */
   it('não quica entre postos de onde o destino é inalcançável', () => {
-    Malha.configurarPostos(4, 4, unidades(50)); // CAM, SP, SCA, SOR
+    Malha.configurarPostos(4, 4, RECARGA_RAPIDA_H); // Campinas, São Paulo, São Carlos, Sorocaba
     Simulacao.reiniciar();
     const carro = Simulacao.colocarCarro(indicePorSigla.get('CAM')!, indicePorSigla.get('RIO')!, BATERIA_CHEIA)!;
-    rodar(2000);
+    rodar(100);
     expect(carro.recargasFeitas).toBeLessThanOrEqual(1);
     expect(carro.situacao).toBe('falhou');
     expect(Estatisticas.saidasArriscadas).toBeGreaterThanOrEqual(1);
   });
 
   it('chega ao Rio encadeando postos quando toda cidade tem um', () => {
-    Malha.configurarPostos(Malha.nos.length, 4, unidades(50));
+    Malha.configurarPostos(Malha.nos.length, 4, RECARGA_RAPIDA_H);
     Simulacao.reiniciar();
     const carro = Simulacao.colocarCarro(indicePorSigla.get('CAM')!, indicePorSigla.get('RIO')!, BATERIA_CHEIA)!;
-    rodar(2000);
+    rodar(100);
     expect(carro.situacao).toBe('chegou');
     expect(carro.recargasFeitas).toBeGreaterThanOrEqual(1);
     expect(carro.recargasFeitas).toBeLessThanOrEqual(2);

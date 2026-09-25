@@ -52,7 +52,7 @@ export function PainelDireito() {
           <Indicador
             cor={CORES.ambar}
             rotulo="espera média em fila"
-            valor={houveViagem ? duracao(Estatisticas.somaTempoEmFila / concluidas, 1) : '—'}
+            valor={houveViagem ? duracao(Estatisticas.somaTempoEmFila / concluidas) : '—'}
           />
           <Indicador
             cor={CORES.menta}
@@ -94,7 +94,7 @@ export function PainelDireito() {
         />
         <LinhaDeDado
           rotulo="Tempo médio recarregando"
-          valor={duracao(Estatisticas.somaTempoRecarregando / concluidas, 1)}
+          valor={duracao(Estatisticas.somaTempoRecarregando / concluidas)}
         />
         <LinhaDeDado
           rotulo="Bateria total recarregada"

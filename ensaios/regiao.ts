@@ -28,34 +28,34 @@ import { criarGeradorAleatorio } from '../src/nucleo/aleatorio';
 import { BATERIA_CHEIA } from '../src/nucleo/constantes';
 import {
   CIDADES,
+  CONSUMO_NA_REGIAO,
   ESTRADAS,
-  MINUTOS_POR_UNIDADE,
   PERFIL_HORARIO,
+  RECARGA_RAPIDA_H,
   RECARGA_RAPIDA_MIN,
-  UNIDADES_POR_DIA_REAL,
   VAGAS_NA_REGIAO,
   indicePorSigla,
   montarRegiaoSudeste,
   sortearBateria,
   sortearCidade,
-  unidades,
 } from '../src/nucleo/regiaoSudeste';
 import { colocarPostosEm, csv, media, mostrar, resumir } from './comum';
 
 const PASTA = join(__dirname, 'resultados');
 
-/* ---------- escala e região: vêm do núcleo, os mesmos dados da interface ---------- */
+/* ---------- região: vem do núcleo, os mesmos dados da interface ----------
+   O peso é o tempo em horas e a bateria cai CONSUMO_NA_REGIAO pontos por hora. */
 
-const MIN_POR_UNIDADE = MINUTOS_POR_UNIDADE;
-const UNIDADES_POR_DIA = UNIDADES_POR_DIA_REAL;
+const UNIDADES_POR_DIA = 24; // o relógio anda em horas reais
 const RECARGA_MIN = RECARGA_RAPIDA_MIN;
 const VAGAS_POR_POSTO = VAGAS_NA_REGIAO;
+const CONSUMO = CONSUMO_NA_REGIAO;
 const RESERVA = 10;
 const BATERIA = Number(
   Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=') as [string, string])).bateria ?? BATERIA_CHEIA
 );
 const LIMIAR_OPORTUNISTA = 30; // 75 min de autonomia: passou num posto, para
-const horasReais = (u: number) => (u * MIN_POR_UNIDADE) / 60;
+const horasReais = (h: number) => h;
 const SOMA_DO_PERFIL = PERFIL_HORARIO.reduce((s, v) => s + v, 0);
 const montarRegiao = montarRegiaoSudeste;
 
@@ -94,14 +94,15 @@ function rodar(
   dias: number,
   semente: number,
   vagas = VAGAS_POR_POSTO,
-  passo = 0.5
+  passo = 0.05 // 3 minutos
 ): Medida {
   montarRegiao();
-  colocarPostosEm(postos, vagas, unidades(RECARGA_MIN));
+  colocarPostosEm(postos, vagas, RECARGA_RAPIDA_H);
   Object.assign(Simulacao.configuracao, {
     algoritmo: 'estrela',
     criterio: 'peso',
     bateriaCheia: BATERIA,
+    consumoPorHora: CONSUMO,
     reserva: RESERVA,
     limiarDeRecarga: LIMIAR_OPORTUNISTA,
     pesoDaFila: 0.35,
@@ -178,7 +179,7 @@ for (let a = 0; a < Malha.nos.length; a++)
   for (let b = a + 1; b < Malha.nos.length; b++) {
     const custo = dijkstra.buscar(a, b, criterioPeso)!.custo;
     pares.push(custo);
-    if (custo > BATERIA - RESERVA) paresForaDoAlcance++;
+    if (custo * CONSUMO > BATERIA - RESERVA) paresForaDoAlcance++;
   }
 const viagemMediaH = horasReais(media(pares));
 const postosPorGrau = [...Malha.nos]
@@ -278,7 +279,7 @@ if (ENSAIOS.includes(3)) console.log(`ensaio 3 pronto em ${((Date.now() - inicio
 
 /* ---------- gravação ---------- */
 
-const estradas = ESTRADAS.map(([de, para, minutos]) => ({ de, para, minutos, peso: unidades(minutos) }));
+const estradas = ESTRADAS.map(([de, para, minutos]) => ({ de, para, minutos, pesoHoras: minutos / 60 }));
 writeFileSync(join(PASTA, 'regiao-cidades.csv'), csv(estrutura));
 writeFileSync(join(PASTA, 'regiao-estradas.csv'), csv(estradas));
 if (ensaio1.length) {
@@ -294,8 +295,9 @@ if (ensaio3.length) {
   writeFileSync(join(PASTA, 'regiao-ensaio3-brutos.csv'), csv(brutos3));
 }
 writeFileSync(join(PASTA, `regiao-resumo${ENSAIOS.length === 3 ? '' : '-ensaio' + ENSAIOS.join('')}.json`), JSON.stringify({
-  escala: { minPorUnidade: MIN_POR_UNIDADE, bateriaCheia: BATERIA, bateriaCheiaMin: BATERIA * MIN_POR_UNIDADE, recargaMin: RECARGA_MIN,
-    vagasPorPosto: VAGAS_POR_POSTO, reservaMin: RESERVA * MIN_POR_UNIDADE, limiarOportunistaMin: LIMIAR_OPORTUNISTA * MIN_POR_UNIDADE },
+  modelo: { regra: 'peso = horas de viagem; bateria gasta = horas × consumo', bateriaCheia: BATERIA, consumoPorHora: CONSUMO,
+    autonomiaH: BATERIA / CONSUMO, recargaMin: RECARGA_MIN, vagasPorPosto: VAGAS_POR_POSTO, reservaPontos: RESERVA,
+    limiarOportunistaPontos: LIMIAR_OPORTUNISTA },
   demanda: { perfilHorario: PERFIL_HORARIO, pesoDaCidade: 'raiz da população', bateriaInicial: '70% em 80-100, 30% em 40-80' },
   ensaios: { dias: DIAS, repeticoes: REPETICOES, bateria: BATERIA, demandaEnsaio1: DEMANDA_1, demandas: DEMANDAS, vagas: VAGAS, demandasEnsaio3: DEMANDAS_3, sementes: SEMENTES },
   regiao: { viagemMediaH, paresForaDoAlcance, totalDePares: pares.length, postosPorGrau: nome(postosPorGrau), melhorNo: Malha.nos[melhorNo].nome },

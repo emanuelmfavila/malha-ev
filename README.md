@@ -32,52 +32,61 @@ informação, não falha.
 Só há duas formas de uma viagem não terminar: **não existe caminho no grafo**, ou
 **a bateria acabou na estrada**.
 
-## A regra única do modelo
+## A regra do modelo
 
-Cada aresta tem **um número só**, o peso.
+Cada aresta tem **um número só**, o peso: **o tempo de viagem em horas**. A
+bateria cai a uma taxa fixa, o **consumo em pontos por hora**, que é uma regra
+da simulação e pode ser mudada na engrenagem.
 
-> Atravessar uma aresta de peso 5 custa **5 horas** de relógio e **5 pontos** de
-> bateria. Sempre.
+> Atravessar uma aresta de peso 5 leva **5 horas** de relógio e gasta
+> **5 × consumo** pontos de bateria. Com consumo 1 (padrão da malha aleatória),
+> peso = horas = bateria.
 
-Não existe velocidade, relevo nem consumo por carro. Todo carro é igual, com
-bateria de 100 pontos. O custo de um caminho é a soma dos números desenhados
-nele, e dá para conferir a olho nu no mapa.
+Não existe velocidade nem relevo. Todo carro é igual: a bateria cheia (padrão
+100 pontos) e o consumo valem para todos, e a autonomia é bateria ÷ consumo. Na
+região o consumo é 24 pontos por hora, então 100 pontos dão 4 h 10 de estrada.
+O custo de um caminho é a soma das horas desenhadas nele; o gasto de bateria
+é isso vezes o consumo.
 
-O peso é o comprimento da aresta na tela dividido pela escala (14 unidades de
-tela por ponto), **arredondado para cima**. Arredondar para cima é o que mantém
-o peso sempre maior ou igual ao comprimento real, e é disso que a heurística
-geográfica do A* depende para continuar admissível e devolver o mesmo caminho
-ótimo do Dijkstra.
+Na malha aleatória o peso é o comprimento da aresta na tela dividido pela escala
+(14 unidades de tela por hora), **arredondado para cima**, o que mantém a
+heurística geográfica do A* admissível. O peso é guardado com precisão de
+minuto: na região as rodovias valem 35 min, 1 h 20, 3 h.
 
-Postos: quem chega espera na fila, a recarga leva 4 h e sempre devolve a bateria
-cheia. Cada posto tem uma vaga. Só a quantidade de postos varia.
+Postos: quem chega espera na fila, a recarga leva um tempo fixo (4 h na malha
+aleatória, 50 min na região) e sempre devolve a bateria cheia. Cada posto tem o
+mesmo número de vagas (1 e 4, respectivamente). Tudo isso é regra editável.
 
 **Parada oportunista.** Passou por um posto com a bateria no nível do limiar ou
 abaixo, o carro para e enche, mesmo que aquela parada não estivesse no plano de
-rota. O limiar é um controle no painel; em zero a regra desliga e o carro só
-para onde o planejador mandou. A condição também exige bateria abaixo da cheia,
-e é isso que impede o carro recém-carregado de entrar na fila do posto seguinte
-para sempre quando há posto em todo nó.
+rota. O limiar é uma regra; em zero desliga. A condição também exige bateria
+abaixo da cheia, o que impede o carro recém-carregado de entrar na fila do posto
+seguinte para sempre quando há posto em todo nó.
+
+## Regras na engrenagem
+
+O botão **⚙ Regras** (no topo e no bloco Cenário) abre um painel com todas as
+regras da simulação, agrupadas em carro e bateria, postos, roteamento e demanda
+e relógio: bateria cheia, consumo por hora, bateria ao sair, quantos nós têm
+posto, vagas, tempo de recarga, parada oportunista, algoritmo, reserva, peso da
+espera na escolha do posto, viagens automáticas por dia e velocidade do relógio.
+Tudo vale na hora, sem reiniciar; trocar de cenário volta aos padrões dele.
 
 ## Cenários
 
 O seletor **Cenário** no painel esquerdo troca a malha inteira:
 
-- **Malha aleatória**: nós por semente, árvore mínima e rotas extras. Peso =
-  horas = bateria, posto de 1 vaga e recarga de 4 h.
+- **Malha aleatória**: nós por semente, árvore mínima e rotas extras. Consumo
+  de 1 ponto por hora (peso = horas = bateria), posto de 1 vaga e recarga de 4 h.
 - **Região: corredor Sudeste**: 17 cidades (interior de SP, Vale do Paraíba,
   Rio e Juiz de Fora) e 22 rodovias, com dados em `src/nucleo/regiaoSudeste.ts`.
-  Cada unidade do modelo vale **2,5 min** reais: a bateria de 100 dá 4 h 10 de
-  estrada (≈ 330 km), a recarga rápida leva 50 min e cada posto tem 4 vagas. O
-  relógio, os balões das rodovias e os tempos dos painéis passam a ser lidos em
-  tempo real. As viagens automáticas saem com peso proporcional à raiz da
-  população de cada cidade, 70% delas com 80 a 100% de bateria. Os tempos de
-  estrada são aproximados e devem ser conferidos antes de virar texto.
-
-O bloco **Configurações** do painel ajusta, para qualquer cenário e sem
-reiniciar, a bateria cheia (autonomia), as vagas por posto e o tempo de recarga.
-Na região o mapa segue as posições reais (latitude e longitude na mesma escala,
-com barra de km) e os nós levam o nome completo da cidade.
+  O peso de cada rodovia é o tempo de viagem em horas; a bateria cai **24
+  pontos por hora**, então 100 pontos dão 4 h 10 de estrada (≈ 330 km); recarga
+  rápida de 50 min e 4 vagas por posto. O mapa segue as posições reais
+  (latitude e longitude na mesma proporção, com barra de km) e os nós levam o
+  nome completo da cidade. As viagens automáticas saem com peso proporcional à
+  raiz da população de cada cidade, 70% delas com 80 a 100% de bateria. Os
+  tempos de estrada são aproximados e devem ser conferidos antes de virar texto.
 
 Um cenário é um objeto em `src/nucleo/cenarios.ts` (como montar a malha, como
 são os postos, quanto vale a unidade); registrar outro ali é o bastante para ele
@@ -176,7 +185,8 @@ Ele não importa nada de React nem toca no DOM, então os testes rodam em ambien
 `node`, sem jsdom e sem nenhum mock de canvas. É onde ficam as invariantes que
 realmente importam:
 
-- peso do caminho = horas de viagem = bateria gasta, com qualquer tamanho de passo;
+- peso do caminho = horas de viagem, e bateria gasta = horas × consumo, com
+  qualquer tamanho de passo;
 - A* devolve o mesmo custo ótimo do Dijkstra, abrindo menos nós, mesmo depois
   de embaralhar todos os pesos;
 - `bateria inicial + recarregado − gasto = bateria atual`, para todo carro;
@@ -235,7 +245,7 @@ curtas. Cada passo:
 
 1. atende os postos: desconta o tempo de quem está na vaga, libera quem
    terminou e puxa o próximo da fila;
-2. move cada carro: uma hora move uma unidade de peso e gasta um ponto de
+2. move cada carro: uma hora move uma hora de peso e gasta `consumo` pontos de
    bateria;
 3. gera viagens aleatórias, se as chegadas automáticas estiverem ligadas;
 4. amostra a ocupação da rede a cada hora simulada, para o gráfico.
@@ -301,7 +311,7 @@ as arestas com peso, os postos e o diário de cada carro.
 2. **Colocar carro** — o deslizante ao lado põe vários de uma vez. Essa rota
    vale só para os carros criados ali; cada carro passa a ter a sua.
 3. Clique numa **aresta** para editar o peso dela ali mesmo. Como o peso é o
-   tempo e é a bateria, o efeito aparece nas duas coisas na hora.
+   tempo e a bateria cai por hora, o efeito aparece nas duas coisas na hora.
 4. Clique num **carro** e o painel da direita passa a ser dele: bateria atual,
    quanto gastou, quanto recarregou, diário de decisões e a **rota dele**.
    Com o carro selecionado, clicar num nó do mapa muda a ponta que estiver

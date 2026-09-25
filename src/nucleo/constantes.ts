@@ -6,11 +6,15 @@ export const ALTURA_DO_MUNDO = 680;
     para recarregar é uma decisão frequente, não um detalhe raro. */
 export const ESCALA_DE_PESO = 14;
 
-/** Faixa em que o peso de uma aresta pode ser editado à mão no mapa. */
-export const PESO_MINIMO = 1;
+/** Faixa em que o peso de uma aresta (horas de viagem) pode ser editado à mão
+    no mapa. O peso é guardado com precisão de minuto. */
+export const PESO_MINIMO = 0.1;
 export const PESO_MAXIMO = 99;
 
 export const BATERIA_CHEIA = 100;
+/** Pontos de bateria gastos por hora de viagem. Com 1, peso = horas = bateria,
+    a regra da malha aleatória; a região usa 24 (100 pontos = 4 h 10 de estrada). */
+export const CONSUMO_POR_HORA = 1;
 export const VAGAS_POR_POSTO = 1;
 export const HORAS_DE_RECARGA = 4;
 
