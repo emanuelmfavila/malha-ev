@@ -38,16 +38,18 @@ export function PainelEsquerdo() {
 
       <Bloco titulo="Configurações" nota="carro e postos">
         <Deslizante
-          rotulo={escala ? `Bateria cheia (${tempo(loja.bateriaCheia)} de autonomia)` : 'Bateria cheia'}
+          rotulo="Bateria cheia"
           valor={loja.bateriaCheia}
           minimo={20}
           maximo={300}
           passo={10}
-          sufixo=" pontos"
+          sufixo={escala ? ` = ${tempo(loja.bateriaCheia)}` : ' pontos'}
           aoMudar={(valor) => loja.definirCampo('bateriaCheia', valor)}
         />
         <p className={estilos.ajuda}>
-          Um ponto de bateria paga um ponto de peso{escala ? `, ou seja ${escala} min de estrada` : ', ou seja 1 h de viagem'}.
+          {escala
+            ? `${loja.bateriaCheia} pontos = ${tempo(loja.bateriaCheia)} de estrada numa carga. `
+            : 'Um ponto de bateria paga um ponto de peso, ou seja 1 h de viagem. '}
           Vale para todo carro; quem já está na malha enche até o novo limite na próxima recarga.
         </p>
         <Deslizante
@@ -99,11 +101,12 @@ export function PainelEsquerdo() {
           }
         />
         <Deslizante
-          rotulo={escala ? `Bateria ao sair (${tempo(loja.bateriaInicial)} de autonomia)` : 'Bateria ao sair'}
+          rotulo="Bateria ao sair"
           valor={Math.min(loja.bateriaInicial, loja.bateriaCheia)}
           minimo={5}
           maximo={loja.bateriaCheia}
           passo={5}
+          sufixo={escala ? ` = ${tempo(loja.bateriaInicial)}` : ''}
           aoMudar={(valor) => loja.definirCampo('bateriaInicial', valor)}
         />
         <Deslizante
@@ -253,6 +256,7 @@ export function PainelEsquerdo() {
             minimo={0}
             maximo={90}
             passo={5}
+            sufixo={escala ? ` = ${tempo(loja.limiarDeRecarga)}` : ''}
             aoMudar={(valor) => loja.definirCampo('limiarDeRecarga', valor)}
           />
         </div>
@@ -292,10 +296,11 @@ export function PainelEsquerdo() {
           </div>
         ) : null}
         <Deslizante
-          rotulo={escala ? `Reserva mínima de bateria (${tempo(loja.reserva)} de autonomia)` : 'Reserva mínima de bateria'}
+          rotulo="Reserva mínima de bateria"
           valor={loja.reserva}
           minimo={0}
           maximo={40}
+          sufixo={escala ? ` = ${tempo(loja.reserva)}` : ''}
           aoMudar={(valor) => loja.definirCampo('reserva', valor)}
         />
         <p className={estilos.ajuda}>
