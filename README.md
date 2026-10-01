@@ -101,6 +101,19 @@ crescente e, na região, um posto em toda cidade com vagas crescentes
 (`--ensaios=3 --vagas=1,2,4 --demandas3=100,200 --bateria=100`). Foi o ensaio da região que revelou o carro
 quicando entre postos e motivou a cadeia de postos viáveis no planejador.
 
+O ensaio 4 da região põe 1 posto por vez em cada cidade e sobe a carga de 10 em 10
+carros/dia até o posto passar de 90% de utilização (ou até 1500). Roda por cidade em
+paralelo e depois junta as partes:
+
+```bash
+echo SP JUN CAM ... | tr ' ' '\n' | xargs -P 9 -I{} node ensaios/.regiao.cjs --ensaios=4 --repeticoes=30 --nos={}
+node ensaios/juntar-ensaio4.mjs
+```
+
+O resultado aparece na tela `/graficos` (botão "Gráficos" na barra de cima): eixo X em
+carros por dia e um menu para trocar o eixo Y (espera na fila, viagens concluídas,
+panes, utilização, fila média, recargas, tempo de viagem), uma linha por cidade.
+
 ## Arquitetura
 
 O motor **não vive em estado do React**. Os objetos do núcleo (`Malha`,

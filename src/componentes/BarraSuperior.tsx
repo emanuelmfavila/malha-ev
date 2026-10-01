@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Simulacao } from '@/nucleo/simulacao';
 import { formatarRelogio } from '@/nucleo/utilidades';
 import { usarLoja } from '@/estado/loja';
@@ -31,6 +32,9 @@ export function BarraSuperior() {
         <Botao variacao="discreta" aoClicar={avancarUmaHora}>Avançar 1 h</Botao>
         <Botao variacao="discreta" aoClicar={reiniciar}>Reiniciar</Botao>
         <Botao variacao="discreta" aoClicar={() => abrirRegras(true)}>⚙ Regras</Botao>
+        <Link href="/graficos" className={`${estilos.botao} ${estilos.discreta}`} style={{ textDecoration: 'none' }}>
+          Gráficos
+        </Link>
       </div>
     </header>
   );
