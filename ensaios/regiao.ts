@@ -3,6 +3,9 @@
    src/nucleo/regiaoSudeste.ts.
 
    Rodar:  npm run ensaio:regiao [-- --dias=7 --repeticoes=30 --demanda=200 --demandas=50,100,...]
+           npm run ensaio:regiao -- --ensaios=4 [--passo=10 --teto=1500 --saturacao=90 --nos=SP,CAM]
+           (com --nos, o ensaio 4 grava só regiao-ensaio4-partes/<sigla>.csv, para rodar
+           cidades em processos paralelos e juntar depois) 
    Saída:  ensaios/resultados/regiao-*.csv
 
    O modelo do simulador tem uma unidade só: peso da aresta = "horas" de relógio = pontos de
@@ -17,7 +20,7 @@
    aproximações de viagem em condições normais e devem ser conferidos antes de publicar;
    trocar a região é trocar essas duas tabelas. */
 
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Malha } from '../src/nucleo/malha';
 import { Simulacao } from '../src/nucleo/simulacao';
@@ -203,6 +206,10 @@ const REPETICOES = Number(argumentos.repeticoes ?? 10);
 const DEMANDA_1 = Number(argumentos.demanda ?? 200);
 const DEMANDAS = (argumentos.demandas ?? '50,100,200,400,800,1600').split(',').map(Number);
 const SEMENTES = Array.from({ length: REPETICOES }, (_, k) => 2001 + k);
+const PASSO_4 = Number(argumentos.passo ?? 10);
+const TETO_4 = Number(argumentos.teto ?? 1500);
+const SATURACAO_4 = Number(argumentos.saturacao ?? 90);
+const NOS_4 = argumentos.nos ? argumentos.nos.split(',').map((sigla) => indicePorSigla.get(sigla)!) : null;
 const nome = (postos: number[]) => postos.map((i) => Malha.nos[i].nome).join('+') || '-';
 
 console.log(`região: ${CIDADES.length} cidades, ${ESTRADAS.length} estradas, viagem média ${viagemMediaH.toFixed(2)} h reais, ` +
@@ -277,7 +284,40 @@ if (ENSAIOS.includes(3))
     }
 if (ENSAIOS.includes(3)) console.log(`ensaio 3 pronto em ${((Date.now() - inicio) / 1000).toFixed(0)} s no total\n`);
 
+/* ---------- ensaio 4: 1 posto por cidade, carga de PASSO_4 em PASSO_4 carros/dia ----------
+   Para cada cidade a carga sobe até a utilização média do posto passar de SATURACAO_4
+   (em %; o degrau que passou entra no resultado) ou até TETO_4 carros/dia. */
+
+const ensaio4: Record<string, unknown>[] = [];
+const brutos4: Record<string, unknown>[] = [];
+if (ENSAIOS.includes(4)) {
+  for (const no of NOS_4 ? NOS_4.map((i) => Malha.nos[i]) : Malha.nos) {
+    for (let carros = PASSO_4; carros <= TETO_4; carros += PASSO_4) {
+      const medidas = SEMENTES.map((s) => {
+        const m = rodar([no.indice], carros, DIAS, s);
+        brutos4.push({ posto: no.nome, carrosPorDia: carros, semente: s, ...m });
+        return m;
+      });
+      const resumo = resumir(medidas);
+      ensaio4.push({ posto: no.nome, carrosPorDia: carros, ...resumo });
+      if (resumo.utilizacao >= SATURACAO_4) break;
+    }
+    console.log(`ensaio 4: ${no.nome} até ${ensaio4[ensaio4.length - 1].carrosPorDia} carros/dia, ${((Date.now() - inicio) / 1000).toFixed(0)} s`);
+  }
+}
+
 /* ---------- gravação ---------- */
+
+if (NOS_4) {
+  const partes = join(PASTA, 'regiao-ensaio4-partes');
+  mkdirSync(partes, { recursive: true });
+  for (const i of NOS_4) {
+    const nomeDoNo = Malha.nos[i].nome;
+    writeFileSync(join(partes, `${CIDADES[i].sigla}.csv`), csv(ensaio4.filter((l) => l.posto === nomeDoNo)));
+    writeFileSync(join(partes, `${CIDADES[i].sigla}-brutos.csv`), csv(brutos4.filter((l) => l.posto === nomeDoNo)));
+  }
+  process.exit(0);
+}
 
 const estradas = ESTRADAS.map(([de, para, minutos]) => ({ de, para, minutos, pesoHoras: minutos / 60 }));
 writeFileSync(join(PASTA, 'regiao-cidades.csv'), csv(estrutura));
@@ -294,14 +334,18 @@ if (ensaio3.length) {
   writeFileSync(join(PASTA, 'regiao-ensaio3-vagas.csv'), csv(ensaio3));
   writeFileSync(join(PASTA, 'regiao-ensaio3-brutos.csv'), csv(brutos3));
 }
+if (ensaio4.length) {
+  writeFileSync(join(PASTA, 'regiao-ensaio4-saturacao-por-no.csv'), csv(ensaio4));
+  writeFileSync(join(PASTA, 'regiao-ensaio4-brutos.csv'), csv(brutos4));
+}
 writeFileSync(join(PASTA, `regiao-resumo${ENSAIOS.length === 3 ? '' : '-ensaio' + ENSAIOS.join('')}.json`), JSON.stringify({
   modelo: { regra: 'peso = horas de viagem; bateria gasta = horas × consumo', bateriaCheia: BATERIA, consumoPorHora: CONSUMO,
     autonomiaH: BATERIA / CONSUMO, recargaMin: RECARGA_MIN, vagasPorPosto: VAGAS_POR_POSTO, reservaPontos: RESERVA,
     limiarOportunistaPontos: LIMIAR_OPORTUNISTA },
   demanda: { perfilHorario: PERFIL_HORARIO, pesoDaCidade: 'raiz da população', bateriaInicial: '70% em 80-100, 30% em 40-80' },
-  ensaios: { dias: DIAS, repeticoes: REPETICOES, bateria: BATERIA, demandaEnsaio1: DEMANDA_1, demandas: DEMANDAS, vagas: VAGAS, demandasEnsaio3: DEMANDAS_3, sementes: SEMENTES },
+  ensaios: { dias: DIAS, repeticoes: REPETICOES, bateria: BATERIA, passo4: PASSO_4, teto4: TETO_4, saturacao4: SATURACAO_4, demandaEnsaio1: DEMANDA_1, demandas: DEMANDAS, vagas: VAGAS, demandasEnsaio3: DEMANDAS_3, sementes: SEMENTES },
   regiao: { viagemMediaH, paresForaDoAlcance, totalDePares: pares.length, postosPorGrau: nome(postosPorGrau), melhorNo: Malha.nos[melhorNo].nome },
-  estrutura, estradas, ensaio1, ensaio2, ensaio3,
+  estrutura, estradas, ensaio1, ensaio2, ensaio3, ensaio4,
 }, null, 2));
 
 mostrar(estrutura, ['sigla', 'populacaoMil', 'grau', 'tempoMedioAteOsOutrosH', 'excentricidadeH']);
