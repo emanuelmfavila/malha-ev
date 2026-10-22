@@ -102,7 +102,7 @@ function rodar(
   montarRegiao();
   colocarPostosEm(postos, vagas, RECARGA_RAPIDA_H);
   Object.assign(Simulacao.configuracao, {
-    algoritmo: 'estrela',
+    algoritmo: 'dijkstra',
     criterio: 'peso',
     bateriaCheia: BATERIA,
     consumoPorHora: CONSUMO,

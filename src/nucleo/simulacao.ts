@@ -50,7 +50,7 @@ export const Simulacao = {
   sortearViagem: null as ((sortear: () => number) => { origem: number; destino: number; bateria: number }) | null,
 
   configuracao: {
-    algoritmo: 'estrela',
+    algoritmo: 'dijkstra',
     criterio: 'peso',
     bateriaCheia: BATERIA_CHEIA,
     consumoPorHora: CONSUMO_POR_HORA,

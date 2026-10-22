@@ -108,7 +108,7 @@ describe('planejador com cadeia de postos', () => {
   beforeEach(() => {
     montarRegiaoSudeste();
     Object.assign(Simulacao.configuracao, {
-      algoritmo: 'estrela', criterio: 'peso', bateriaCheia: BATERIA_CHEIA, consumoPorHora: CONSUMO_NA_REGIAO,
+      algoritmo: 'dijkstra', criterio: 'peso', bateriaCheia: BATERIA_CHEIA, consumoPorHora: CONSUMO_NA_REGIAO,
       reserva: 10, limiarDeRecarga: 30, pesoDaFila: 0.35, chegadasAutomaticas: false,
     });
   });

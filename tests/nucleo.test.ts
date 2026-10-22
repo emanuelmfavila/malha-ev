@@ -159,7 +159,7 @@ describe('motor de simulação em 30 dias', () => {
     Malha.configurarPostos(6);
     Simulacao.reiniciar();
     Object.assign(Simulacao.configuracao, {
-      algoritmo: 'estrela',
+      algoritmo: 'dijkstra',
       criterio: 'peso',
       reserva: 10,
       chegadasAutomaticas: true,
@@ -320,7 +320,7 @@ describe('determinismo e robustez', () => {
     Malha.configurarPostos(6);
     Simulacao.reiniciar();
     Object.assign(Simulacao.configuracao, {
-      algoritmo: 'estrela',
+      algoritmo: 'dijkstra',
       criterio: 'peso',
       reserva: 10,
       chegadasAutomaticas: true,

@@ -1,7 +1,8 @@
 # Malha EV
 
-Simulador visual de carros elétricos sobre um grafo, com Dijkstra e A*, postos
-de recarga com fila e um painel que explica cada decisão tomada.
+Simulador visual de carros elétricos sobre um grafo, com Dijkstra (padrão) e A*, postos
+de recarga com fila e um painel que explica cada decisão tomada. No corredor Sudeste os dois
+abrem praticamente os mesmos nós (a estimativa geográfica é folgada), então o TCC usa Dijkstra.
 
 ```bash
 npm install

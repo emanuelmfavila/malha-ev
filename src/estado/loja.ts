@@ -125,7 +125,7 @@ export const usarLoja = create<Loja>((definir, ler) => ({
   horasPorSegundo: 4,
   chegadasAutomaticas: false,
   chegadasPorDia: 12,
-  algoritmo: 'estrela',
+  algoritmo: 'dijkstra',
   criterio: 'peso',
   reserva: 10,
   limiarDeRecarga: 30,

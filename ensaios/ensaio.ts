@@ -55,7 +55,7 @@ function rodar(
   prepararMalha();
   colocarPostosEm(postos);
   Object.assign(Simulacao.configuracao, {
-    algoritmo: 'estrela',
+    algoritmo: 'dijkstra',
     criterio: 'peso',
     reserva: 10,
     limiarDeRecarga: 30,
