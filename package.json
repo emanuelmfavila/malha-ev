@@ -14,7 +14,7 @@
     "ensaio:regiao": "esbuild ensaios/regiao.ts --bundle --platform=node --outfile=ensaios/.regiao.cjs --log-level=warning && node ensaios/.regiao.cjs"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "next": "15.5.29",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "zustand": "5.0.8"

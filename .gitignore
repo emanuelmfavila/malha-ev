@@ -7,3 +7,5 @@ next-env.d.ts
 .ensaio.cjs
 .regiao.cjs
 ensaios/resultados/regiao-ensaio4-partes/
+.vercel
+.env*
